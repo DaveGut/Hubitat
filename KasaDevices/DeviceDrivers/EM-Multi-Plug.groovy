@@ -6,14 +6,14 @@ License Information:  https://github.com/DaveGut/HubitatActive/blob/master/KasaD
 
 Changes since version 6:  https://github.com/DaveGut/HubitatActive/blob/master/KasaDevices/Version%206%20Change%20Log.md
 
-===== Version 6.3.2) =====
+===== Version 6.3.2.1) =====
 	a.  Drivers (plugs and switches):
 		1.	Add LED On/Off commands. Add attribute led to reflect state
 		2.	Remove LED On/Off Preference.
 	b.	Drivers (all).  change attribute "commsError" to string with values "true" and "false".
 		Allows use with Rule Machine.
 ===================================================================================================*/
-def driverVer() { return "6.3.2" }
+def driverVer() { return "6.3.2.1" }
 //def type() { return "Multi Plug" }
 def type() { return "EM Multi Plug" }
 def file() { return type().replaceAll(" ", "-") }
@@ -589,11 +589,13 @@ def setCommsData(commsType) {
 def ledOn() {
 	logDebug("ledOn: Setting LED to on")
 	sendCmd("""{"system":{"set_led_off":{"off":0}}}""")
+	sendEvent(name: "led", value: "on")
 }
 
 def ledOff() {
-	logDebug("ledOn: Setting LED to off")
+	logDebug("ledOff: Setting LED to off")
 	sendCmd("""{"system":{"set_led_off":{"off":1}}}""")
+	sendEvent(name: "led", value: "off")
 }
 
 def getSystemData() {
@@ -914,15 +916,10 @@ def distResp(response) {
 			runIn(1, refresh)
 		} else if (response.system.reboot) {
 			logWarn("distResp: Rebooting device.")
-		} else if (response.system.set_led_off) {
-			if (response.system.set_led_off.err_code == 0) {
-				def onOff = "on"
-				if (device.currentValue("led") == "on") { onOff = "off" }
-				sendEvent(name: "led", value: onOff)
-				logDebug("distResp: Led On/Off = ${onOff}")
-			} else {
-				logWarn("distResp: Setting LED Faild")
-			}
+		} else if (response.system.set_led_off.err_code != 0) {
+			sendEvent(name: "led", value: "error")
+			logWarn("distResp: Setting LED Failed")
+		}
 		} else {
 			logWarn("distResp: Unhandled response = ${response}")
 		}
